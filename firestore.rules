@@ -1,0 +1,41 @@
+// firestore.rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is admin
+    function isAdmin(adminEmail) {
+      return request.auth != null && request.auth.token.email == adminEmail;
+    }
+    
+    // Admin can read/write their own config
+    match /config/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'mcayasir1501@gmail.com';
+    }
+    
+    // Thank You entries - read for everyone, write only for admin
+    match /thankyou_entries/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'mcayasir1501@gmail.com';
+      allow create: if request.auth != null && request.auth.token.email == 'mcayasir1501@gmail.com';
+      allow update: if request.auth != null && request.auth.token.email == 'mcayasir1501@gmail.com';
+      allow delete: if request.auth != null && request.auth.token.email == 'mcayasir1501@gmail.com';
+    }
+    
+    // Paid entries - read for everyone, write only for admin
+    match /paid_entries/{document=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.email == 'mcayasir1501@gmail.com';
+      allow create: if request.auth != null && request.auth.token.email == 'mcayasir1501@gmail.com';
+      allow update: if request.auth != null && request.auth.token.email == 'mcayasir1501@gmail.com';
+      allow delete: if request.auth != null && request.auth.token.email == 'mcayasir1501@gmail.com';
+    }
+    
+    // Deny everything else
+    match /{document=**} {
+      allow read: if false;
+      allow write: if false;
+    }
+  }
+}
