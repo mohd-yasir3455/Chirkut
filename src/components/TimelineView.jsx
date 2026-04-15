@@ -423,5 +423,6 @@ const TimelineView = ({ entries = [], isLoading = false, showAdmin = false, onEd
     </div>
   );
 };
+console.log('TimelineView rendered with entries:', entries);
 
 export default TimelineView;
