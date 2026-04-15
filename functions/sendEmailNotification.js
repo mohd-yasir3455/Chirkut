@@ -6,14 +6,16 @@ const nodemailer = require('nodemailer');
 // Initialize Firebase Admin
 admin.initializeApp();
 
-// Configure email service (using Gmail or your email provider)
-// For Gmail: Enable 2FA and create an App Password
-// https://myaccount.google.com/apppasswords
+// Configuration - update these values directly or set environment variables
+const GMAIL_EMAIL = 'mcayasir1501@gmail.com'; // Your Gmail address
+const GMAIL_PASSWORD = 'swdv xbea fedz vnyc'; // Your App Password
+
+// Configure email service
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.GMAIL_USER || functions.config().gmail.email,
-    pass: process.env.GMAIL_PASSWORD || functions.config().gmail.password,
+    user: GMAIL_EMAIL,
+    pass: GMAIL_PASSWORD,
   },
 });
 
@@ -21,8 +23,8 @@ const transporter = nodemailer.createTransport({
 // const sgMail = require('@sendgrid/mail');
 // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || functions.config().emails.admin;
-const FRIEND_EMAIL = process.env.FRIEND_EMAIL || functions.config().emails.friend;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || functions.config().emails.admin || 'mcayasir1501@gmail.com';
+const FRIEND_EMAIL = 'thedarklife3455@gmail.com'; // VITE_FRIEND_EMAIL value
 
 /**
  * Cloud Function: Triggers when a new thankyou entry is added

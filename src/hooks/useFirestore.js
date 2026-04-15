@@ -68,8 +68,13 @@ export const useAddDocument = (collectionName) => {
     setError(null);
 
     try {
+      // Filter out undefined values to prevent Firestore errors
+      const cleanData = Object.fromEntries(
+        Object.entries(data).filter(([_, value]) => value !== undefined)
+      );
+
       const docRef = await addDoc(collection(db, collectionName), {
-        ...data,
+        ...cleanData,
         createdAt: serverTimestamp(),
       });
       setLoading(false);

@@ -45,7 +45,7 @@ const PaidThankYous = ({ isAdmin = false }) => {
         title: formData.title.trim(),
         date: Timestamp.fromDate(new Date(formData.date)),
         countDeducted: parseInt(formData.countDeducted) || 1,
-        adminEmail: process.env.REACT_APP_ADMIN_EMAIL,
+        adminEmail: import.meta.env.VITE_ADMIN_EMAIL,
       });
 
       setFormData({

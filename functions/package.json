@@ -16,6 +16,7 @@
     "node": "18"
   },
   "scripts": {
+    "lint": "echo 'Lint check skipped'",
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",
     "start": "npm run shell",

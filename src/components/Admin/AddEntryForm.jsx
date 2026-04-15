@@ -46,7 +46,7 @@ const AddEntryForm = ({ onSuccess, onCancel }) => {
         date: Timestamp.fromDate(new Date(formData.date)),
         countAdded: parseInt(formData.countAdded) || 1,
         isSpecial: formData.isSpecial,
-        adminEmail: process.env.REACT_APP_ADMIN_EMAIL,
+        adminEmail: import.meta.env.VITE_ADMIN_EMAIL,
       });
 
       // Update total count

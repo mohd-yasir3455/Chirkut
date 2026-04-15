@@ -1,0 +1,346 @@
+{
+  "info": {
+    "name": "Thank You Tracker Firebase API Tests",
+    "description": "Postman collection for testing Firebase Auth, Firestore, and Cloud Functions for the Thank You Tracker app",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "apiKey",
+      "value": "AIzaSyDg9zB0H5Wi7cDvVyLk6DKZl3MBY2JTTqw",
+      "type": "string"
+    },
+    {
+      "key": "projectId",
+      "value": "chirkut-11",
+      "type": "string"
+    },
+    {
+      "key": "idToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Sign In Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"mcayasir1501@gmail.com\",\n  \"password\": \"your_admin_password\",\n  \"returnSecureToken\": true\n}"
+            },
+            "url": {
+              "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{apiKey}}",
+              "protocol": "https",
+              "host": [
+                "identitytoolkit",
+                "googleapis",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "accounts:signInWithPassword"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{apiKey}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('idToken', response.idToken);",
+                  "    console.log('ID Token set:', response.idToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign In Friend",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"thedarklife3455@gmail.com\",\n  \"password\": \"your_friend_password\",\n  \"returnSecureToken\": true\n}"
+            },
+            "url": {
+              "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{apiKey}}",
+              "protocol": "https",
+              "host": [
+                "identitytoolkit",
+                "googleapis",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "accounts:signInWithPassword"
+              ],
+              "query": [
+                {
+                  "key": "key",
+                  "value": "{{apiKey}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('idToken', response.idToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Firestore Operations",
+      "item": [
+        {
+          "name": "Get All Thank You Entries",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{idToken}}"
+              }
+            ],
+            "url": {
+              "raw": "https://firestore.googleapis.com/v1/projects/{{projectId}}/databases/(default)/documents/thankyou_entries",
+              "protocol": "https",
+              "host": [
+                "firestore",
+                "googleapis",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "projects",
+                "{{projectId}}",
+                "databases",
+                "(default)",
+                "documents",
+                "thankyou_entries"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Thank You Entry",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{idToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fields\": {\n    \"message\": {\n      \"stringValue\": \"Thank you for being an amazing friend!\"\n    },\n    \"from\": {\n      \"stringValue\": \"Test User\"\n    },\n    \"date\": {\n      \"timestampValue\": \"2024-01-15T10:00:00Z\"\n    },\n    \"isPaid\": {\n      \"booleanValue\": false\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "https://firestore.googleapis.com/v1/projects/{{projectId}}/databases/(default)/documents/thankyou_entries",
+              "protocol": "https",
+              "host": [
+                "firestore",
+                "googleapis",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "projects",
+                "{{projectId}}",
+                "databases",
+                "(default)",
+                "documents",
+                "thankyou_entries"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Thank You Entry",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{idToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fields\": {\n    \"message\": {\n      \"stringValue\": \"Updated: Thank you for everything!\"\n    },\n    \"from\": {\n      \"stringValue\": \"Updated Test User\"\n    },\n    \"isPaid\": {\n      \"booleanValue\": true\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "https://firestore.googleapis.com/v1/projects/{{projectId}}/databases/(default)/documents/thankyou_entries/{documentId}",
+              "protocol": "https",
+              "host": [
+                "firestore",
+                "googleapis",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "projects",
+                "{{projectId}}",
+                "databases",
+                "(default)",
+                "documents",
+                "thankyou_entries",
+                "{documentId}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Thank You Entry",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{idToken}}"
+              }
+            ],
+            "url": {
+              "raw": "https://firestore.googleapis.com/v1/projects/{{projectId}}/databases/(default)/documents/thankyou_entries/{documentId}",
+              "protocol": "https",
+              "host": [
+                "firestore",
+                "googleapis",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "projects",
+                "{{projectId}}",
+                "databases",
+                "(default)",
+                "documents",
+                "thankyou_entries",
+                "{documentId}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Config Operations",
+      "item": [
+        {
+          "name": "Get Config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{idToken}}"
+              }
+            ],
+            "url": {
+              "raw": "https://firestore.googleapis.com/v1/projects/{{projectId}}/databases/(default)/documents/config/main",
+              "protocol": "https",
+              "host": [
+                "firestore",
+                "googleapis",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "projects",
+                "{{projectId}}",
+                "databases",
+                "(default)",
+                "documents",
+                "config",
+                "main"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Total Count",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{idToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fields\": {\n    \"totalThankyouCount\": {\n      \"integerValue\": \"100\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "https://firestore.googleapis.com/v1/projects/{{projectId}}/databases/(default)/documents/config/main",
+              "protocol": "https",
+              "host": [
+                "firestore",
+                "googleapis",
+                "com"
+              ],
+              "path": [
+                "v1",
+                "projects",
+                "{{projectId}}",
+                "databases",
+                "(default)",
+                "documents",
+                "config",
+                "main"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

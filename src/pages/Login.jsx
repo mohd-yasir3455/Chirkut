@@ -51,9 +51,9 @@ const Login = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <div className="login-icon">👑</div>
-          <h1>Admin Access</h1>
-          <p>Sign in to manage thank you moments</p>
+          <div className="login-icon">✨</div>
+          <h1>Welcome Back</h1>
+          <p>Sign in to access your thank you moments</p>
         </motion.div>
 
         {/* Error Alert */}
@@ -81,7 +81,7 @@ const Login = () => {
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
+              placeholder="your.email@example.com"
               required
               disabled={loading}
             />
@@ -142,7 +142,7 @@ const Login = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
         >
-          💡 Use your admin email and password to access the dashboard
+          💡 Only authorized users can access this application
         </motion.p>
       </motion.div>
 

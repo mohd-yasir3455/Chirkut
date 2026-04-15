@@ -34,7 +34,7 @@ const Navigation = ({ isAdmin, user, onLogout }) => {
           Thank You Tracker
         </Link>
 
-        {isAdmin && user ? (
+        {user ? (
           <div className="nav-menu">
             <button
               className="menu-toggle"
@@ -51,20 +51,25 @@ const Navigation = ({ isAdmin, user, onLogout }) => {
               >
                 🏠 Home
               </Link>
-              <Link
-                to="/admin"
-                className="nav-link"
-                onClick={() => setShowMenu(false)}
-              >
-                👑 Admin
-              </Link>
-              <Link
-                to="/paid"
-                className="nav-link"
-                onClick={() => setShowMenu(false)}
-              >
-                💝 Paid
-              </Link>
+              
+              {isAdmin && (
+                <>
+                  <Link
+                    to="/admin"
+                    className="nav-link"
+                    onClick={() => setShowMenu(false)}
+                  >
+                    👑 Admin
+                  </Link>
+                  <Link
+                    to="/paid"
+                    className="nav-link"
+                    onClick={() => setShowMenu(false)}
+                  >
+                    💝 Paid
+                  </Link>
+                </>
+              )}
 
               <motion.button
                 className="btn btn-secondary btn-small"
@@ -80,7 +85,7 @@ const Navigation = ({ isAdmin, user, onLogout }) => {
           </div>
         ) : (
           <Link to="/login" className="btn btn-primary">
-            👑 Admin Login
+            🔐 Login
           </Link>
         )}
       </div>
@@ -223,22 +228,30 @@ function App() {
     return <LoadingFallback />;
   }
 
+  // If not logged in, show only login page
+  if (!user) {
+    return (
+      <BrowserRouter>
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            <Route path="*" element={<Login />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    );
+  }
+
+  // User is logged in, show full app
   return (
     <BrowserRouter>
       <Navigation isAdmin={isAdmin()} user={user} onLogout={logout} />
 
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
-          {/* Public Route */}
+          {/* Public Route - accessible to all logged in users */}
           <Route path="/" element={<PublicView />} />
 
-          {/* Login Route */}
-          <Route
-            path="/login"
-            element={user ? <Navigate to="/" replace /> : <Login />}
-          />
-
-          {/* Protected Admin Routes */}
+          {/* Admin Routes - only for admin users */}
           <Route
             path="/admin"
             element={

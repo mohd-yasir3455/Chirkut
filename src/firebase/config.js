@@ -1,16 +1,15 @@
-// src/firebase/config.js
 import { initializeApp } from 'firebase/app';
 import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  apiKey: "AIzaSyA5Ar8JlFVDmDuTebH4wBN4xNsZjcjPdnU",
+  authDomain: "chirkut-756fa.firebaseapp.com",
+  databaseURL: "https://chirkut-756fa-default-rtdb.firebaseio.com",
+  projectId: "chirkut-756fa",
+  storageBucket: "chirkut-756fa.firebasestorage.app",
+  messagingSenderId: "981689498740",
+  appId: "1:981689498740:web:825666b552ff19e7dda521"
 };
 
 // Initialize Firebase
