@@ -1,32 +1,57 @@
 // src/components/ConfettiEffect.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import Confetti from 'react-confetti';
 
 const ConfettiEffect = ({ trigger, duration = 3000 }) => {
-  const [showConfetti, setShowConfetti] = React.useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    if (trigger) {
-      setShowConfetti(true);
-      
-      // Use the global confetti from CDN
-      if (typeof confetti !== 'undefined') {
-        confetti({
-          particleCount: 150,
-          spread: 360,
-          duration: duration,
-          disableForReducedMotion: true,
-        });
-      }
-      
-      const timer = setTimeout(() => {
-        setShowConfetti(false);
-      }, duration);
-
-      return () => clearTimeout(timer);
+    if (typeof window === 'undefined') {
+      return undefined;
     }
+
+    const updateViewport = () => {
+      setViewport({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
+
+  useEffect(() => {
+    if (!trigger) {
+      return undefined;
+    }
+
+    setShowConfetti(true);
+
+    const timer = window.setTimeout(() => {
+      setShowConfetti(false);
+    }, duration);
+
+    return () => window.clearTimeout(timer);
   }, [trigger, duration]);
 
-  return null;
+  if (!showConfetti) {
+    return null;
+  }
+
+  return (
+    <Confetti
+      width={viewport.width}
+      height={viewport.height}
+      numberOfPieces={180}
+      recycle={false}
+      gravity={0.22}
+      aria-label="Celebration confetti"
+    />
+  );
 };
 
 export default ConfettiEffect;

@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/send-email-event",
+      "destination": "https://email-server-n4by.onrender.com/send"
+    },
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

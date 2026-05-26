@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "menstrual_trackers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "reminderEnabled",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "reminderSentForCycle",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nextReminderDate",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

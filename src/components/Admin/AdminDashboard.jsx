@@ -1,16 +1,20 @@
 // src/components/Admin/AdminDashboard.jsx
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Timestamp } from 'firebase/firestore';
-import { useCollection, useUpdateDocument, useDeleteDocument, useUpdateCount, useTotalCount } from '../../hooks/useFirestore';
+import { useCollection, useDocument, useSetDocument, useUpdateDocument, useDeleteDocument, useUpdateCount, useTotalCount } from '../../hooks/useFirestore';
 import AddEntryForm from './AddEntryForm';
 import TimelineView from '../TimelineView';
 import CounterAnimation from '../CounterAnimation';
 import ConfettiEffect from '../ConfettiEffect';
 import ManualCountAdjuster from './ManualCountAdjuster';
+import { useAuth } from '../../hooks/useAuth';
+import { sendEmailEvent } from '../../utils/emailEvents';
 
 const AdminDashboard = () => {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showTrackerForm, setShowTrackerForm] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [showCountAdjuster, setShowCountAdjuster] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -20,6 +24,21 @@ const AdminDashboard = () => {
   const { updateDocument } = useUpdateDocument('thankyou_entries');
   const { deleteDocument } = useDeleteDocument('thankyou_entries');
   const { updateCount } = useUpdateCount();
+  const { user, logout, isAdmin } = useAuth();
+  const { document: trackerDoc } = useDocument('menstrual_trackers', user?.uid);
+  const { setDocument: setTrackerDocument } = useSetDocument('menstrual_trackers', user?.uid);
+
+  const firstName = user?.email?.split('@')[0] || 'Admin';
+  const topNavItems = useMemo(
+    () => [
+      { label: 'Home', icon: '⌂', to: '/', active: false, visible: true },
+      { label: 'My Moments', icon: '♡', to: '/moments', active: false, visible: true },
+      { label: 'Health', icon: '🌷', to: '/tracker', active: false, visible: true },
+      { label: 'Admin', icon: '♛', to: '/admin', active: true, visible: isAdmin() },
+      { label: 'Paid', icon: '♥', to: '/paid', active: false, visible: isAdmin() },
+    ].filter((item) => item.visible),
+    [isAdmin]
+  );
 
   const handleEditEntry = async (updatedData) => {
     try {
@@ -61,10 +80,74 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleTrackerSubmit = async (trackerPayload) => {
+    const existingHistory = Array.isArray(trackerDoc?.history) ? trackerDoc.history : [];
+    const nextReminderDate = new Date(trackerPayload.lastPeriodDate);
+    nextReminderDate.setDate(nextReminderDate.getDate() + 28);
+
+    const historyEntry = {
+      id: crypto.randomUUID(),
+      lastPeriodDate: trackerPayload.lastPeriodDate,
+      nextReminderDate,
+      periodLength: trackerPayload.periodLength,
+      mood: trackerPayload.mood,
+      symptoms: trackerPayload.symptoms,
+      note: trackerPayload.note,
+      createdAt: new Date(),
+    };
+
+    await setTrackerDocument({
+      userId: user.uid,
+      userEmail: user.email,
+      lastPeriodDate: trackerPayload.lastPeriodDate,
+      nextReminderDate,
+      periodLength: trackerPayload.periodLength,
+      mood: trackerPayload.mood,
+      symptoms: trackerPayload.symptoms,
+      note: trackerPayload.note,
+      reminderEnabled: trackerPayload.reminderEnabled,
+      reminderEmail: trackerPayload.reminderEmail,
+      reminderSentForCycle: false,
+      history: [historyEntry, ...existingHistory],
+    });
+
+    if (trackerPayload.reminderEnabled) {
+      await sendEmailEvent('health', { to: trackerPayload.reminderEmail });
+    }
+  };
+
   return (
     <div className="admin-dashboard">
       {/* Confetti Effect */}
       <ConfettiEffect trigger={showConfetti} />
+
+      <header className="admin-topbar">
+        <div className="admin-brand-mark">
+          <div className="admin-brand-icon">💙</div>
+          <div>
+            <div className="admin-brand-name">Chirkut स्थल</div>
+            <div className="admin-brand-subtitle">Control room</div>
+          </div>
+        </div>
+
+        <div className="admin-topbar-tabs">
+          {topNavItems.map((item) => (
+            <Link key={item.label} to={item.to} className={`admin-top-tab ${item.active ? 'active' : ''}`}>
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </div>
+
+        <div className="admin-topbar-user">
+          <div className="admin-avatar-badge">{firstName.slice(0, 1).toUpperCase()}</div>
+          <div className="admin-user-meta">
+            <span className="admin-user-name">{firstName}</span>
+            <span className="admin-user-email">{user?.email}</span>
+          </div>
+          <button type="button" className="admin-logout-chip" onClick={logout}>👋 Logout</button>
+        </div>
+      </header>
 
       {/* Header */}
       <motion.div
@@ -94,6 +177,15 @@ const AdminDashboard = () => {
             whileTap={{ scale: 0.95 }}
           >
             {showCountAdjuster ? '✕ Close' : '🔢 Adjust Count'}
+          </motion.button>
+
+          <motion.button
+            className="btn btn-secondary"
+            onClick={() => setShowTrackerForm(!showTrackerForm)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {showTrackerForm ? '✕ Close' : '🌷 Add Health Entry'}
           </motion.button>
         </div>
       </motion.div>
@@ -131,6 +223,29 @@ const AdminDashboard = () => {
               setShowConfetti(true);
             }}
             onCancel={() => setShowAddForm(false)}
+          />
+        </motion.div>
+      )}
+
+      {showTrackerForm && (
+        <motion.div
+          className="form-section"
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+        >
+          <TrackerEntryForm
+            defaultEmail={trackerDoc?.reminderEmail || import.meta.env.VITE_FRIEND_EMAIL || user?.email}
+            onSubmit={async (payload) => {
+              try {
+                await handleTrackerSubmit(payload);
+                setShowTrackerForm(false);
+                setShowConfetti(true);
+              } catch (error) {
+                console.error('Error saving tracker entry:', error);
+              }
+            }}
+            onCancel={() => setShowTrackerForm(false)}
           />
         </motion.div>
       )}
@@ -194,6 +309,136 @@ const AdminDashboard = () => {
           padding: 40px 20px;
           max-width: 1400px;
           margin: 0 auto;
+        }
+
+        .admin-topbar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 18px;
+          margin-bottom: 22px;
+          padding: 12px 16px;
+          border-radius: 28px;
+          background: rgba(255, 255, 255, 0.78);
+          border: 1px solid rgba(121, 174, 252, 0.14);
+          box-shadow: 0 16px 40px rgba(74, 112, 175, 0.08);
+        }
+
+        .admin-brand-mark {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .admin-brand-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 14px;
+          display: grid;
+          place-items: center;
+          background: linear-gradient(135deg, rgba(255, 209, 96, 0.28), rgba(121, 174, 252, 0.18));
+          color: #f3bc3f;
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        .admin-brand-name {
+          font-size: 24px;
+          font-weight: 800;
+          line-height: 1.05;
+          letter-spacing: -0.02em;
+          color: #163b78;
+        }
+
+        .admin-brand-subtitle {
+          font-size: 12px;
+          color: var(--text-light);
+          margin-top: 2px;
+        }
+
+        .admin-topbar-tabs {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .admin-top-tab {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid rgba(121, 174, 252, 0.12);
+          color: var(--text-secondary);
+          font-size: 13px;
+          font-weight: 700;
+          box-shadow: 0 6px 16px rgba(86, 123, 192, 0.05);
+        }
+
+        .admin-top-tab.active {
+          color: var(--primary-blush);
+          background: rgba(121, 174, 252, 0.12);
+        }
+
+        .admin-topbar-user {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.76);
+          border: 1px solid rgba(121, 174, 252, 0.1);
+          min-width: 0;
+        }
+
+        .admin-avatar-badge {
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          font-weight: 800;
+          color: white;
+          background: var(--gradient-soft);
+          flex-shrink: 0;
+        }
+
+        .admin-user-meta {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .admin-user-name {
+          color: var(--text-primary);
+          font-size: 13px;
+          font-weight: 700;
+          text-transform: capitalize;
+        }
+
+        .admin-user-email {
+          color: var(--text-light);
+          font-size: 11px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 220px;
+        }
+
+        .admin-logout-chip {
+          margin-left: 6px;
+          border: 1px solid rgba(121, 174, 252, 0.2);
+          background: rgba(255, 255, 255, 0.82);
+          color: var(--primary-blush);
+          border-radius: 999px;
+          padding: 9px 14px;
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
         }
 
         .admin-header {
@@ -287,6 +532,19 @@ const AdminDashboard = () => {
         }
 
         @media (max-width: 1024px) {
+          .admin-topbar {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .admin-topbar-tabs {
+            justify-content: flex-start;
+          }
+
+          .admin-topbar-user {
+            align-self: flex-start;
+          }
+
           .admin-header {
             flex-direction: column;
             align-items: flex-start;
@@ -304,6 +562,25 @@ const AdminDashboard = () => {
         @media (max-width: 640px) {
           .admin-dashboard {
             padding: 20px 16px;
+          }
+
+          .admin-topbar {
+            padding: 14px;
+            border-radius: 24px;
+          }
+
+          .admin-brand-name {
+            font-size: 22px;
+          }
+
+          .admin-topbar-tabs {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .admin-topbar-user {
+            width: 100%;
+            justify-content: center;
           }
 
           .admin-header {
@@ -481,3 +758,209 @@ const EditEntryModal = ({ entry, onSave, onCancel }) => {
 };
 
 export default AdminDashboard;
+
+const TrackerEntryForm = ({ defaultEmail, onSubmit, onCancel }) => {
+  const [formData, setFormData] = useState({
+    lastPeriodDate: new Date().toISOString().split('T')[0],
+    periodLength: 5,
+    mood: 'okay',
+    symptoms: '',
+    note: '',
+    reminderEnabled: true,
+    reminderEmail: defaultEmail || '',
+  });
+  const [status, setStatus] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  return (
+    <motion.form
+      className="tracker-admin-form card"
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setStatus(null);
+        setSaving(true);
+
+        try {
+          await onSubmit({
+            lastPeriodDate: new Date(formData.lastPeriodDate),
+            periodLength: parseInt(formData.periodLength, 10) || 5,
+            mood: formData.mood,
+            symptoms: formData.symptoms.trim(),
+            note: formData.note.trim(),
+            reminderEnabled: formData.reminderEnabled,
+            reminderEmail: formData.reminderEmail.trim(),
+          });
+          setStatus({ type: 'success', message: 'Tracker entry saved and health email triggered.' });
+        } catch (error) {
+          setStatus({ type: 'error', message: error.message || 'Could not save tracker entry.' });
+        } finally {
+          setSaving(false);
+        }
+      }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <h3>🌷 Add Health Entry</h3>
+      <p className="tracker-admin-copy">This updates the Health page timeline and sends the immediate `health` care email.</p>
+
+      {status && (
+        <div className={`tracker-form-alert ${status.type}`}>
+          {status.type === 'success' ? '💌' : '⚠️'} {status.message}
+        </div>
+      )}
+
+      <div className="tracker-admin-grid">
+        <label className="tracker-admin-field">
+          <span>Last period start date</span>
+          <input type="date" name="lastPeriodDate" value={formData.lastPeriodDate} onChange={handleChange} required />
+        </label>
+
+        <label className="tracker-admin-field">
+          <span>Typical period length</span>
+          <input type="number" min="1" max="10" name="periodLength" value={formData.periodLength} onChange={handleChange} />
+        </label>
+
+        <label className="tracker-admin-field">
+          <span>Mood</span>
+          <select name="mood" value={formData.mood} onChange={handleChange}>
+            <option value="okay">Doing okay</option>
+            <option value="calm">Calm and steady</option>
+            <option value="low">A little low</option>
+            <option value="tired">Tired but trying</option>
+            <option value="emotional">Extra emotional</option>
+          </select>
+        </label>
+
+        <label className="tracker-admin-field">
+          <span>Reminder email</span>
+          <input type="email" name="reminderEmail" value={formData.reminderEmail} onChange={handleChange} required />
+        </label>
+      </div>
+
+      <label className="tracker-admin-field">
+        <span>Symptoms</span>
+        <textarea name="symptoms" rows="3" value={formData.symptoms} onChange={handleChange} placeholder="Cramps, low energy, cravings, etc." />
+      </label>
+
+      <label className="tracker-admin-field">
+        <span>Care note</span>
+        <textarea name="note" rows="4" value={formData.note} onChange={handleChange} placeholder="A personal reminder, encouragement, or context for this cycle." />
+      </label>
+
+      <label className="tracker-admin-toggle">
+        <input type="checkbox" name="reminderEnabled" checked={formData.reminderEnabled} onChange={handleChange} />
+        <span>Send the immediate health email and keep reminders active</span>
+      </label>
+
+      <div className="tracker-admin-actions">
+        <button type="submit" className="btn btn-primary" disabled={saving}>
+          {saving ? 'Saving…' : 'Save Health Entry'}
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>
+          Cancel
+        </button>
+      </div>
+
+      <style>{`
+        .tracker-admin-form {
+          width: 100%;
+          max-width: 760px;
+          background: rgba(255, 255, 255, 0.84);
+        }
+
+        .tracker-admin-copy {
+          margin-top: -8px;
+          margin-bottom: 18px;
+          color: var(--text-secondary);
+        }
+
+        .tracker-form-alert {
+          margin-bottom: 16px;
+          padding: 14px 16px;
+          border-radius: 18px;
+          font-size: 14px;
+          font-weight: 600;
+        }
+
+        .tracker-form-alert.success {
+          background: rgba(121, 174, 252, 0.12);
+          color: #2f63b4;
+          border: 1px solid rgba(121, 174, 252, 0.28);
+        }
+
+        .tracker-form-alert.error {
+          background: rgba(255, 125, 146, 0.12);
+          color: #b04d6d;
+          border: 1px solid rgba(255, 125, 146, 0.28);
+        }
+
+        .tracker-admin-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+
+        .tracker-admin-field {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-bottom: 14px;
+        }
+
+        .tracker-admin-field span {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text-primary);
+        }
+
+        .tracker-admin-field input,
+        .tracker-admin-field select,
+        .tracker-admin-field textarea {
+          width: 100%;
+          padding: 12px 14px;
+          border-radius: 16px;
+          border: 1px solid rgba(121, 174, 252, 0.16);
+          background: rgba(255, 255, 255, 0.92);
+          font: inherit;
+          color: var(--text-primary);
+        }
+
+        .tracker-admin-toggle {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin: 8px 0 18px;
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--text-primary);
+        }
+
+        .tracker-admin-toggle input {
+          width: 18px;
+          height: 18px;
+          accent-color: #d06b97;
+        }
+
+        .tracker-admin-actions {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        @media (max-width: 640px) {
+          .tracker-admin-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </motion.form>
+  );
+};

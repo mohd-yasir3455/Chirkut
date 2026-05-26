@@ -3,11 +3,10 @@ import { useState, useEffect } from 'react';
 import {
   collection,
   query,
-  where,
-  getDocs,
   getDoc,
   doc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   onSnapshot,
@@ -51,7 +50,7 @@ export const useCollection = (collectionName, orderByField = null) => {
       setError(err.message);
       setLoading(false);
     }
-  }, [collectionName]);
+  }, [collectionName, orderByField]);
 
   return { documents, loading, error };
 };
@@ -183,6 +182,46 @@ export const useDocument = (collectionName, docId) => {
   }, [collectionName, docId]);
 
   return { document, loading, error };
+};
+
+/**
+ * Hook to create or replace a document with merge support
+ */
+export const useSetDocument = (collectionName, docId) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const setDocument = async (data, options = { merge: true }) => {
+    if (!docId) {
+      throw new Error('Document id is required');
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const docRef = doc(db, collectionName, docId);
+      const cleanData = Object.fromEntries(
+        Object.entries(data).filter(([_, value]) => value !== undefined)
+      );
+
+      await setDoc(
+        docRef,
+        {
+          ...cleanData,
+          updatedAt: serverTimestamp(),
+        },
+        options
+      );
+      setLoading(false);
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+      throw err;
+    }
+  };
+
+  return { setDocument, loading, error };
 };
 
 /**

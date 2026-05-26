@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Timestamp } from 'firebase/firestore';
 import { useAddDocument, useUpdateCount, useTotalCount } from '../../hooks/useFirestore';
+import { sendEmailEvent } from '../../utils/emailEvents';
 
 const AddEntryForm = ({ onSuccess, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ const AddEntryForm = ({ onSuccess, onCancel }) => {
 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [emailStatus, setEmailStatus] = useState(null);
 
   const { addDocument, loading: addingDoc } = useAddDocument('thankyou_entries');
   const { updateCount, loading: updatingCount } = useUpdateCount();
@@ -32,6 +34,7 @@ const AddEntryForm = ({ onSuccess, onCancel }) => {
     e.preventDefault();
     setError(null);
     setSuccess(false);
+    setEmailStatus(null);
 
     if (!formData.title.trim()) {
       setError('Title is required');
@@ -52,6 +55,20 @@ const AddEntryForm = ({ onSuccess, onCancel }) => {
       // Update total count
       const newTotal = totalCount + (parseInt(formData.countAdded) || 1);
       await updateCount(newTotal);
+
+      try {
+        const emailResponse = await sendEmailEvent('add');
+        setEmailStatus({
+          type: 'success',
+          message: `Email sent to ${emailResponse?.accepted?.[0] || 'recipient'} (${emailResponse?.response || 'accepted by server'})`,
+        });
+      } catch (emailError) {
+        console.error('Error sending add email event:', emailError);
+        setEmailStatus({
+          type: 'warning',
+          message: `Entry saved, but email failed: ${emailError.message}`,
+        });
+      }
 
       setSuccess(true);
       setFormData({
@@ -101,6 +118,16 @@ const AddEntryForm = ({ onSuccess, onCancel }) => {
           animate={{ opacity: 1, y: 0 }}
         >
           ✅ Entry added successfully!
+        </motion.div>
+      )}
+
+      {emailStatus && (
+        <motion.div
+          className={`alert ${emailStatus.type === 'success' ? 'alert-info' : 'alert-warning'}`}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          {emailStatus.type === 'success' ? '📨' : '⚠️'} {emailStatus.message}
         </motion.div>
       )}
 
@@ -234,6 +261,18 @@ const AddEntryForm = ({ onSuccess, onCancel }) => {
           background: rgba(76, 175, 80, 0.1);
           color: #4CAF50;
           border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .alert-info {
+          background: rgba(121, 174, 252, 0.12);
+          color: #2f63b4;
+          border: 1px solid rgba(121, 174, 252, 0.3);
+        }
+
+        .alert-warning {
+          background: rgba(255, 196, 93, 0.16);
+          color: #8a5a00;
+          border: 1px solid rgba(255, 196, 93, 0.36);
         }
 
         .form-row {

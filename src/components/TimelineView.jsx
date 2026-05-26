@@ -103,7 +103,7 @@ const TimelineView = ({ entries = [], isLoading = false, showAdmin = false, onEd
                         <p className="entry-description">{entry.description}</p>
                       )}
 
-                      <div className="entry-footer">
+                      <div className={`entry-footer ${showAdmin ? 'with-actions' : 'count-only'}`}>
                         <div className="entry-count">
                           <span className="count-badge">+{entry.countAdded || 1}</span>
                           <span className="count-label">points</span>
@@ -311,23 +311,28 @@ const TimelineView = ({ entries = [], isLoading = false, showAdmin = false, onEd
           border-top: 1px solid rgba(255, 181, 216, 0.15);
         }
 
+        .entry-footer.count-only {
+          justify-content: flex-end;
+        }
+
         .entry-count {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
         }
 
         .count-badge {
           background: linear-gradient(135deg, var(--primary-blush), var(--primary-lavender));
           color: white;
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 13px;
+          padding: 3px 10px;
+          border-radius: 999px;
+          font-size: 11px;
           font-weight: 700;
+          line-height: 1.1;
         }
 
         .count-label {
-          font-size: 12px;
+          font-size: 11px;
           color: var(--text-light);
           font-weight: 500;
         }
@@ -423,6 +428,5 @@ const TimelineView = ({ entries = [], isLoading = false, showAdmin = false, onEd
     </div>
   );
 };
-console.log('TimelineView rendered with entries:', entries);
 
 export default TimelineView;

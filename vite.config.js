@@ -7,6 +7,14 @@ export default defineConfig({
     port: 3000,
     open: true,
     strictPort: false,
+    proxy: {
+      '/api/send-email-event': {
+        target: 'https://email-server-n4by.onrender.com',
+        changeOrigin: true,
+        secure: true,
+        rewrite: () => '/send',
+      },
+    },
   },
   build: {
     outDir: 'dist',
@@ -21,8 +29,5 @@ export default defineConfig({
         },
       },
     },
-  },
-  define: {
-    'process.env': {},
   },
 })

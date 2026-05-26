@@ -8,6 +8,10 @@
     ],
     "rewrites": [
       {
+        "source": "/api/send-email-event",
+        "function": "sendEmailEvent"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
@@ -33,17 +37,11 @@
       }
     ]
   },
+  "functions": {
+    "source": "functions"
+  },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
-  },
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs18",
-    "predeploy": [
-      "npm --prefix \"$RESOURCE_DIR\" run lint"
-    ],
-    "memory": 256,
-    "timeoutSeconds": 60
   }
 }

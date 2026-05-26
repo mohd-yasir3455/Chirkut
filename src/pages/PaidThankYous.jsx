@@ -1,13 +1,16 @@
-// src/pages/PaidThankYous.jsx
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Timestamp } from 'firebase/firestore';
 import { useCollection, useAddDocument, useDeleteDocument, useTotalCount } from '../hooks/useFirestore';
 import TimelineView from '../components/TimelineView';
 import { getProgressPercentage } from '../utils/helpers';
+import { useAuth } from '../hooks/useAuth';
+import { sendEmailEvent } from '../utils/emailEvents';
 
 const PaidThankYous = ({ isAdmin = false }) => {
   const [showAddForm, setShowAddForm] = useState(false);
+  const [emailStatus, setEmailStatus] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -18,6 +21,16 @@ const PaidThankYous = ({ isAdmin = false }) => {
   const { addDocument, loading: addingDoc } = useAddDocument('paid_entries');
   const { deleteDocument } = useDeleteDocument('paid_entries');
   const { count: totalCount } = useTotalCount();
+  const { user, logout } = useAuth();
+
+  const firstName = user?.email?.split('@')[0] || 'You';
+  const topNavItems = [
+    { label: 'Home', icon: '⌂', to: '/', active: false, visible: true },
+    { label: 'My Moments', icon: '♡', to: '/moments', active: false, visible: true },
+    { label: 'Health', icon: '🌷', to: '/tracker', active: false, visible: true },
+    { label: 'Admin', icon: '♛', to: '/admin', active: false, visible: isAdmin },
+    { label: 'Paid', icon: '♥', to: '/paid', active: true, visible: isAdmin },
+  ].filter((item) => item.visible);
 
   // Calculate totals
   const totalPaid = paidEntries.reduce((sum, entry) => sum + (entry.countDeducted || 0), 0);
@@ -34,6 +47,7 @@ const PaidThankYous = ({ isAdmin = false }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setEmailStatus(null);
 
     if (!formData.title.trim()) {
       alert('Title is required');
@@ -47,6 +61,20 @@ const PaidThankYous = ({ isAdmin = false }) => {
         countDeducted: parseInt(formData.countDeducted) || 1,
         adminEmail: import.meta.env.VITE_ADMIN_EMAIL,
       });
+
+      try {
+        const emailResponse = await sendEmailEvent('update');
+        setEmailStatus({
+          type: 'success',
+          message: `Email sent to ${emailResponse?.accepted?.[0] || 'recipient'} (${emailResponse?.response || 'accepted by server'})`,
+        });
+      } catch (emailError) {
+        console.error('Error sending remove email event:', emailError);
+        setEmailStatus({
+          type: 'warning',
+          message: `Paid entry saved, but email failed: ${emailError.message}`,
+        });
+      }
 
       setFormData({
         title: '',
@@ -71,6 +99,34 @@ const PaidThankYous = ({ isAdmin = false }) => {
 
   return (
     <div className="paid-page">
+      <header className="paid-topbar">
+        <div className="paid-brand-mark">
+          <div className="paid-brand-icon">💙</div>
+          <div>
+            <div className="paid-brand-name">Chirkut स्थल</div>
+            <div className="paid-brand-subtitle">Repayment tracker</div>
+          </div>
+        </div>
+
+        <div className="paid-topbar-tabs">
+          {topNavItems.map((item) => (
+            <Link key={item.label} to={item.to} className={`paid-top-tab ${item.active ? 'active' : ''}`}>
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </div>
+
+        <div className="paid-topbar-user">
+          <div className="paid-avatar-badge">{firstName.slice(0, 1).toUpperCase()}</div>
+          <div className="paid-user-meta">
+            <span className="paid-user-name">{firstName}</span>
+            <span className="paid-user-email">{user?.email}</span>
+          </div>
+          <button type="button" className="paid-logout-chip" onClick={logout}>👋 Logout</button>
+        </div>
+      </header>
+
       {/* Header */}
       <motion.div
         className="paid-header"
@@ -93,6 +149,16 @@ const PaidThankYous = ({ isAdmin = false }) => {
           </motion.button>
         )}
       </motion.div>
+
+      {emailStatus && (
+        <motion.div
+          className={`email-status-banner ${emailStatus.type === 'success' ? 'success' : 'warning'}`}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          {emailStatus.type === 'success' ? '📨' : '⚠️'} {emailStatus.message}
+        </motion.div>
+      )}
 
       {/* Summary Cards */}
       <motion.div
@@ -258,6 +324,9 @@ const PaidThankYous = ({ isAdmin = false }) => {
             entries={paidEntries}
             isLoading={paidLoading}
             showAdmin={isAdmin}
+            countField="countDeducted"
+            countPrefix="-"
+            countLabel="repaid"
             onEdit={() => {}}
             onDelete={handleDelete}
           />
@@ -271,6 +340,136 @@ const PaidThankYous = ({ isAdmin = false }) => {
           margin: 0 auto;
         }
 
+        .paid-topbar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 18px;
+          margin-bottom: 22px;
+          padding: 12px 16px;
+          border-radius: 28px;
+          background: rgba(255, 255, 255, 0.78);
+          border: 1px solid rgba(121, 174, 252, 0.14);
+          box-shadow: 0 16px 40px rgba(74, 112, 175, 0.08);
+        }
+
+        .paid-brand-mark {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .paid-brand-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 14px;
+          display: grid;
+          place-items: center;
+          background: linear-gradient(135deg, rgba(255, 209, 96, 0.28), rgba(121, 174, 252, 0.18));
+          color: #f3bc3f;
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        .paid-brand-name {
+          font-size: 24px;
+          font-weight: 800;
+          line-height: 1.05;
+          letter-spacing: -0.02em;
+          color: #163b78;
+        }
+
+        .paid-brand-subtitle {
+          font-size: 12px;
+          color: var(--text-light);
+          margin-top: 2px;
+        }
+
+        .paid-topbar-tabs {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .paid-top-tab {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid rgba(121, 174, 252, 0.12);
+          color: var(--text-secondary);
+          font-size: 13px;
+          font-weight: 700;
+          box-shadow: 0 6px 16px rgba(86, 123, 192, 0.05);
+        }
+
+        .paid-top-tab.active {
+          color: var(--primary-blush);
+          background: rgba(121, 174, 252, 0.12);
+        }
+
+        .paid-topbar-user {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.76);
+          border: 1px solid rgba(121, 174, 252, 0.1);
+          min-width: 0;
+        }
+
+        .paid-avatar-badge {
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          font-weight: 800;
+          color: white;
+          background: var(--gradient-soft);
+          flex-shrink: 0;
+        }
+
+        .paid-user-meta {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .paid-user-name {
+          color: var(--text-primary);
+          font-size: 13px;
+          font-weight: 700;
+          text-transform: capitalize;
+        }
+
+        .paid-user-email {
+          color: var(--text-light);
+          font-size: 11px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 220px;
+        }
+
+        .paid-logout-chip {
+          margin-left: 6px;
+          border: 1px solid rgba(121, 174, 252, 0.2);
+          background: rgba(255, 255, 255, 0.82);
+          color: var(--primary-blush);
+          border-radius: 999px;
+          padding: 9px 14px;
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
         .paid-header {
           display: flex;
           justify-content: space-between;
@@ -282,6 +481,26 @@ const PaidThankYous = ({ isAdmin = false }) => {
           backdrop-filter: blur(10px);
           border-radius: 24px;
           border: 1px solid rgba(255, 181, 216, 0.2);
+        }
+
+        .email-status-banner {
+          margin-bottom: 18px;
+          padding: 14px 16px;
+          border-radius: 18px;
+          font-size: 14px;
+          font-weight: 600;
+        }
+
+        .email-status-banner.success {
+          background: rgba(121, 174, 252, 0.12);
+          color: #2f63b4;
+          border: 1px solid rgba(121, 174, 252, 0.28);
+        }
+
+        .email-status-banner.warning {
+          background: rgba(255, 196, 93, 0.16);
+          color: #8a5a00;
+          border: 1px solid rgba(255, 196, 93, 0.36);
         }
 
         .header-content h1 {
@@ -476,6 +695,19 @@ const PaidThankYous = ({ isAdmin = false }) => {
         }
 
         @media (max-width: 1024px) {
+          .paid-topbar {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .paid-topbar-tabs {
+            justify-content: flex-start;
+          }
+
+          .paid-topbar-user {
+            align-self: flex-start;
+          }
+
           .paid-header {
             flex-direction: column;
             align-items: flex-start;
@@ -489,6 +721,25 @@ const PaidThankYous = ({ isAdmin = false }) => {
         @media (max-width: 640px) {
           .paid-page {
             padding: 20px 16px;
+          }
+
+          .paid-topbar {
+            padding: 14px;
+            border-radius: 24px;
+          }
+
+          .paid-brand-name {
+            font-size: 22px;
+          }
+
+          .paid-topbar-tabs {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .paid-topbar-user {
+            width: 100%;
+            justify-content: center;
           }
 
           .paid-header {
