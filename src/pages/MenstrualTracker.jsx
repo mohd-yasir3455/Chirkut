@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useDocument } from '../hooks/useFirestore';
+import { useCollection } from '../hooks/useFirestore';
 import { useAuth } from '../hooks/useAuth';
 
 const trackerSticker = {
@@ -111,37 +111,64 @@ const daysBetweenDates = (firstValue, secondValue) => {
 
 const MenstrualTracker = () => {
   const { user, logout, isAdmin } = useAuth();
-  const { document: tracker, loading } = useDocument('menstrual_trackers', 'shared');
+  const { documents: trackerDocs, loading } = useCollection('menstrual_trackers');
 
   const firstName = user?.email?.split('@')[0] || 'You';
-  const reminderEmail = tracker?.reminderEmail || import.meta.env.VITE_FRIEND_EMAIL || user?.email;
+  const reminderEmail = trackerDocs.find((doc) => doc.id === 'shared')?.reminderEmail
+    || trackerDocs[0]?.reminderEmail
+    || import.meta.env.VITE_FRIEND_EMAIL
+    || user?.email;
   const history = useMemo(() => {
-    const items = Array.isArray(tracker?.history) && tracker.history.length > 0
-      ? tracker.history
-      : tracker?.lastPeriodDate
-        ? [{
-            id: 'current-cycle',
-            lastPeriodDate: tracker.lastPeriodDate,
-            nextReminderDate: tracker.nextReminderDate,
-            periodLength: tracker.periodLength,
-            mood: tracker.mood,
-            symptoms: tracker.symptoms,
-            note: tracker.note,
-          }]
-        : [];
-    return [...items].sort((a, b) => {
+    const items = trackerDocs.flatMap((trackerDoc) => {
+      if (Array.isArray(trackerDoc?.history) && trackerDoc.history.length > 0) {
+        return trackerDoc.history.map((entry, index) => ({
+          ...entry,
+          id: entry.id || `${trackerDoc.id}-${index}`,
+          sourceDocId: trackerDoc.id,
+        }));
+      }
+
+      if (trackerDoc?.lastPeriodDate) {
+        return [{
+          id: `${trackerDoc.id}-current-cycle`,
+          sourceDocId: trackerDoc.id,
+          lastPeriodDate: trackerDoc.lastPeriodDate,
+          nextReminderDate: trackerDoc.nextReminderDate,
+          periodLength: trackerDoc.periodLength,
+          mood: trackerDoc.mood,
+          symptoms: trackerDoc.symptoms,
+          note: trackerDoc.note,
+        }];
+      }
+
+      return [];
+    });
+
+    const uniqueItems = items.filter((entry, index, allItems) => {
+      const entryDate = toDate(entry.lastPeriodDate)?.getTime();
+      return allItems.findIndex((candidate) => {
+        return (
+          toDate(candidate.lastPeriodDate)?.getTime() === entryDate &&
+          (candidate.note || '') === (entry.note || '') &&
+          (candidate.symptoms || '') === (entry.symptoms || '')
+        );
+      }) === index;
+    });
+
+    return [...uniqueItems].sort((a, b) => {
       const first = toDate(a?.lastPeriodDate)?.getTime() || 0;
       const second = toDate(b?.lastPeriodDate)?.getTime() || 0;
       return second - first;
     });
-  }, [tracker]);
+  }, [trackerDocs]);
   const latestEntry = history[0];
   const previousEntry = history[1];
-  const daysUntilReminder = diffInDays(tracker?.nextReminderDate);
+  const latestNextReminderDate = latestEntry?.nextReminderDate || null;
+  const daysUntilReminder = diffInDays(latestNextReminderDate);
   const daysSinceLastPeriod = latestEntry ? Math.abs(diffInDays(latestEntry.lastPeriodDate) ?? 0) : null;
   const cycleLengthDays = latestEntry && previousEntry
     ? daysBetweenDates(latestEntry.lastPeriodDate, previousEntry.lastPeriodDate)
-    : latestEntry?.periodLength || tracker?.periodLength || null;
+    : latestEntry?.periodLength || null;
 
   const topNavItems = [
     { label: 'Home', icon: '⌂', to: '/', active: false, visible: true },
@@ -168,12 +195,12 @@ const MenstrualTracker = () => {
       icon: '⏳',
       title: 'Next period in',
       value:
-        tracker?.nextReminderDate
+        latestNextReminderDate
           ? daysUntilReminder !== null
             ? daysUntilReminder >= 0
               ? `${daysUntilReminder} days`
               : `${Math.abs(daysUntilReminder)} days late`
-            : formatFriendlyDate(tracker.nextReminderDate)
+            : formatFriendlyDate(latestNextReminderDate)
           : 'Waiting for an admin entry',
       accent: 'violet',
     },
