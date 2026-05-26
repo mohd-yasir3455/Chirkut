@@ -1,6 +1,7 @@
 // src/App.jsx
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from "@vercel/analytics/next"
 import { useAuth } from './hooks/useAuth';
 import './styles/globals.css';
 
@@ -39,6 +40,7 @@ function App() {
   if (!user) {
     return (
       <BrowserRouter>
+        <Analytics />
         <Suspense fallback={<LoadingFallback />}>
           <Routes>
             <Route path="*" element={<Login />} />
@@ -52,6 +54,7 @@ function App() {
   return (
     <BrowserRouter>
       <Suspense fallback={<LoadingFallback />}>
+        <Analytics />
         <Routes>
           {/* Public Route - accessible to all logged in users */}
           <Route path="/" element={<PublicView />} />
