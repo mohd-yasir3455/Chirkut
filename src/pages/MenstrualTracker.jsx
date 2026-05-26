@@ -111,7 +111,7 @@ const daysBetweenDates = (firstValue, secondValue) => {
 
 const MenstrualTracker = () => {
   const { user, logout, isAdmin } = useAuth();
-  const { document: tracker, loading } = useDocument('menstrual_trackers', user?.uid);
+  const { document: tracker, loading } = useDocument('menstrual_trackers', 'shared');
 
   const firstName = user?.email?.split('@')[0] || 'You';
   const reminderEmail = tracker?.reminderEmail || import.meta.env.VITE_FRIEND_EMAIL || user?.email;

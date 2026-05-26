@@ -25,8 +25,8 @@ const AdminDashboard = () => {
   const { deleteDocument } = useDeleteDocument('thankyou_entries');
   const { updateCount } = useUpdateCount();
   const { user, logout, isAdmin } = useAuth();
-  const { document: trackerDoc } = useDocument('menstrual_trackers', user?.uid);
-  const { setDocument: setTrackerDocument } = useSetDocument('menstrual_trackers', user?.uid);
+  const { document: trackerDoc } = useDocument('menstrual_trackers', 'shared');
+  const { setDocument: setTrackerDocument } = useSetDocument('menstrual_trackers', 'shared');
 
   const firstName = user?.email?.split('@')[0] || 'Admin';
   const topNavItems = useMemo(
